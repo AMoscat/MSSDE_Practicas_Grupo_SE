@@ -40,6 +40,7 @@
 
 #include "xc.h"
 #include <libpic30.h> // Needed for delay32
+#include <stdio.h>
 
 void init_clock_signal(void)
 {
@@ -205,22 +206,34 @@ int leer_adc(int canal)
     return adc_resultado;
 }
 
+void init_rb8(void)
+{
+    ANSELBbits.ANSB8 = 0;  // RB8 como pin digital
+    LATBbits.LATB8 = 0;    // Estado inicial bajo
+    TRISBbits.TRISB8 = 0;  // RB8 como salida
+}
+
 int main(void) 
 {
     init_clock_signal();
+    init_rb8();
     init_uart1();
     init_adc();
     
     while(1)
     {
+        LATBbits.LATB8 = 1;  // Inicio del ciclo
+
         int resultado_tension = leer_adc(0);
         int resultado_luminosidad = leer_adc(1);
         
         printf("tension: %d, luminosidad: %d\r\n", resultado_tension, resultado_luminosidad);
 
+        LATBbits.LATB8 = 0;  // Ambas muestras transmitidas
+
         // Esperar aproximadamente 1 s
         // 59904000 * 1
-        delay32(59904000);
+        __delay32(59904000);
     }
 
     return 0;

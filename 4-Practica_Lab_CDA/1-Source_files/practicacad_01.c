@@ -40,6 +40,7 @@
 
 #include "xc.h"
 #include <libpic30.h> // Needed for delay32
+#include <stdio.h>
 
 void init_clock_signal(void)
 {
@@ -181,17 +182,27 @@ void init_adc(void)
 
 //----------------------------------------------------------------------------
 
+void init_rb8(void)
+{
+    ANSELBbits.ANSB8 = 0;  // RB8 como pin digital
+    LATBbits.LATB8 = 0;    // Estado inicial bajo
+    TRISBbits.TRISB8 = 0;  // RB8 como salida
+}
+
 volatile int adc_resultado = 0;
 volatile int espera_adc = 1;
 
 int main(void) 
 {
     init_clock_signal();
+    init_rb8();
     init_uart1();
     init_adc();
     
     while(1)
     {
+        LATBbits.LATB8 = 1;  // Inicio del ciclo
+
         // Comienzo adquisicion con espera de 100us aprox
         AD1CON1bits.SAMP = 1;
         __delay32(6000);
@@ -205,9 +216,15 @@ int main(void)
         
         printf("%d\r\n",adc_resultado);
 
+        // Esperar al final real de la transmision
+        //while (!U1STAbits.TRMT) {}
+
+        LATBbits.LATB8 = 0;  // Fin del trabajo del ciclo
+
         // Esperar aproximadamente 333 ms (3 muestras por segundo)
         // 59904000 * 0,333
-        delay32(19950000);
+        __delay32(19950000);
+
     }
 
     return 0;
