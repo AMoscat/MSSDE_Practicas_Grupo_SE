@@ -180,28 +180,41 @@ void init_adc(void)
     AD1CON1bits.ADON = 1; //Start operation    
 }
 
+void initTimer45(){
+    T4CONbits.TSIDL = 1;
+    T4CONbits.TGATE = 0;
+    T4CONbits.TCS = 0;
+    T4CONbits.T32 = 1;
+    T4CONbits.TCKPS = 0b11;
+    PR5 = 0x0001;
+    PR4 = 0x30AF;
+    IPC7bits.T5IP = 7;
+    IFS1bits.T5IF = 0;
+    IEC1bits.T5IE = 1;
+    T4CONbits.TON = 1;
+}
+
 //----------------------------------------------------------------------------
 
-void init_rb8(void)
-{
-    ANSELBbits.ANSB8 = 0;  // RB8 como pin digital
-    LATBbits.LATB8 = 0;    // Estado inicial bajo
-    TRISBbits.TRISB8 = 0;  // RB8 como salida
-}
 
 volatile int adc_resultado = 0;
 volatile int espera_adc = 1;
+volatile int espera_muestra = 1;
 
 int main(void) 
 {
     init_clock_signal();
-    init_rb8();
+    initTimer45();
     init_uart1();
     init_adc();
     
     while(1)
     {
-        LATBbits.LATB8 = 1;  // Inicio del ciclo
+        while(espera_muestra)
+        {
+        }
+        espera_muestra = 1;
+        
 
         // Comienzo adquisicion con espera de 100us aprox
         AD1CON1bits.SAMP = 1;
@@ -215,16 +228,6 @@ int main(void)
         espera_adc = 1;
         
         printf("%d\r\n",adc_resultado);
-
-        // Esperar al final real de la transmision
-        //while (!U1STAbits.TRMT) {}
-
-        LATBbits.LATB8 = 0;  // Fin del trabajo del ciclo
-
-        // Esperar aproximadamente 333 ms (3 muestras por segundo)
-        // 59904000 * 0,333
-        __delay32(19950000);
-
     }
 
     return 0;
@@ -236,4 +239,9 @@ void __attribute__((interrupt, no_auto_psv)) _AD1Interrupt(void)
     adc_resultado = ADC1BUF0;
     IFS0bits.AD1IF = 0;
     espera_adc = 0;
+}
+
+void __attribute__((interrupt(no_auto_psv))) _T5Interrupt(void){
+    espera_muestra = 0;
+    IFS1bits.T5IF = 0;
 }
